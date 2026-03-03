@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Open Chat</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- JOIN PAGE -->
+<div id="joinPage">
+    <h1>Join Chat</h1>
+    <form id="joinForm">
+        <input type="text" id="name" placeholder="Enter Nickname" required>
+        <input type="text" id="room" placeholder="Enter Group ID" required>
+        <button type="submit">Join</button>
+    </form>
+</div>
+
+<!-- CHAT PAGE -->
+<div id="chatPage" style="display:none;">
+    <div class="appContainer">
+
+        <div class="sidebar">
+            <h3>Users</h3>
+            <ul id="users"></ul>
+        </div>
+
+        <div class="chatArea">
+
+            <div class="messages" id="messages"></div>
+            <div id="typingIndicator" style="color:lime;"></div>
+
+            <div class="inputArea">
+                <input type="text" id="messageInput" placeholder="Type message">
+
+                <button onclick="addEmoji('😀')">😀</button>
+                <button onclick="addEmoji('😂')">😂</button>
+                <button onclick="addEmoji('❤️')">❤️</button>
+
+                <button onclick="sendMessage()">Send</button>
+            </div>
+
+        </div>
+
+    </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
