@@ -10,118 +10,98 @@ const server = http.createServer(app);
 const io = socketio(server);
 
 app.use(cors());
+app.use(express.json());
 
-/* -------------------------
-MongoDB Connection
---------------------------*/
-mongoose
-.connect("mongodb+srv://amar12441s8_db_user:WZFuHtxnJu8u7cD0@cluster0.gpgwuqb.mongodb.net/chat")
-.then(() => console.log("MongoDB Atlas Connected"))
-.catch((err) => console.log(err));
+/* ---------------- MONGODB ---------------- */
 
-/* -------------------------
-Message Schema
---------------------------*/
+mongoose.connect(
+"mongodb+srv://amar12441s8_db_user:WZFuHtxnJu8u7cD0@cluster0.gpgwuqb.mongodb.net/chat",
+{
+useNewUrlParser: true,
+useUnifiedTopology: true
+}
+)
+.then(()=>console.log("MongoDB Atlas Connected"))
+.catch(err=>console.log(err));
+
+/* ---------------- MESSAGE MODEL ---------------- */
+
 const messageSchema = new mongoose.Schema({
-name: String,
-text: String,
-room: String,
-time: { type: Date, default: Date.now }
+name:String,
+text:String,
+room:String,
+time:{type:Date,default:Date.now}
 });
 
-const Message = mongoose.model("Message", messageSchema);
+const Message = mongoose.model("Message",messageSchema);
 
 let users = [];
 
-/* -------------------------
-Socket Connection
---------------------------*/
-io.on("connection", (socket) => {
-console.log("User connected");
+/* ---------------- SOCKET ---------------- */
 
-/* Join room */
-socket.on("joinRoom", async ({ name, room }) => {
-socket.username = name;
-socket.room = room;
+io.on("connection",(socket)=>{
 
-```
+console.log("User Connected");
+
+socket.on("joinRoom",async({name,room})=>{
+
+socket.username=name;
+socket.room=room;
+
 socket.join(room);
 
 users.push({
-  id: socket.id,
-  name,
-  room
+id:socket.id,
+name,
+room
 });
 
-/* Send old messages */
-const oldMessages = await Message.find({ room });
+const oldMessages = await Message.find({room});
 
-oldMessages.forEach((msg) => {
-  socket.emit("message", msg);
+oldMessages.forEach(msg=>{
+socket.emit("message",msg);
 });
 
-/* Send room users */
 io.to(room).emit(
-  "roomUsers",
-  users.filter((u) => u.room === room)
+"roomUsers",
+users.filter(u=>u.room===room)
 );
-```
 
 });
 
-/* Send message */
-socket.on("sendMessage", async ({ message }) => {
+socket.on("sendMessage",async({message})=>{
+
 const newMsg = new Message({
-name: socket.username,
-text: message,
-room: socket.room
+name:socket.username,
+text:message,
+room:socket.room
 });
 
-```
 const savedMsg = await newMsg.save();
 
-io.to(socket.room).emit("message", savedMsg);
-```
+io.to(socket.room).emit("message",savedMsg);
 
 });
 
-/* Delete message */
-socket.on("deleteMessage", async (id) => {
-if (!id) return;
-
-```
-const msg = await Message.findById(id);
-if (!msg) return;
-
-if (msg.name !== socket.username) return;
-
-await Message.deleteOne({ _id: id });
-
-io.to(socket.room).emit("messageDeleted", id.toString());
-```
+socket.on("disconnect",()=>{
+users = users.filter(u=>u.id!==socket.id);
+});
 
 });
 
-/* Disconnect */
-socket.on("disconnect", () => {
-users = users.filter((u) => u.id !== socket.id);
-});
-});
+/* ---------------- FRONTEND ---------------- */
 
-/* -------------------------
-Serve Frontend
---------------------------*/
-app.use(express.static(path.join(__dirname, "../client")));
+app.use(express.static(path.join(__dirname,"../client")));
 
-app.get("/", (req, res) => {
-res.sendFile(path.join(__dirname, "../client/index.html"));
+app.get("/",(req,res)=>{
+res.sendFile(path.join(__dirname,"../client/index.html"));
 });
 
-/* -------------------------
-Start Server
---------------------------*/
+/* ---------------- SERVER ---------------- */
+
 const PORT = process.env.PORT || 10000;
 
-server.listen(PORT, () => {
-console.log(`Server running on port ${PORT}`);
+server.listen(PORT,()=>{
+console.log("Server running on port "+PORT);
 });
+const PORT = process.env.PORT || 10000;
