@@ -11,106 +11,117 @@ const io = socketio(server);
 
 app.use(cors());
 
-/* ---------- Serve Frontend ---------- */
-app.use(express.static(path.join(__dirname, "../client")));
-
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "../client/index.html"));
-});
-
-/* ---------- MongoDB ---------- */
+/* -------------------------
+MongoDB Connection
+--------------------------*/
 mongoose
-  .connect("mongodb+srv://amar12441s8_db_user:WZFUhXxnJu8u7cD0@cluster0.gpgwuqb.mongodb.net/chat")
-  .then(() => console.log("MongoDB Atlas Connected"))
-  .catch((err) => console.log(err));
+.connect("mongodb+srv://amar12441s8_db_user:WZFuHtxnJu8u7cD0@cluster0.gpgwuqb.mongodb.net/chat")
+.then(() => console.log("MongoDB Atlas Connected"))
+.catch((err) => console.log(err));
 
-/* ---------- Schema ---------- */
+/* -------------------------
+Message Schema
+--------------------------*/
 const messageSchema = new mongoose.Schema({
-  name: String,
-  text: String,
-  room: String,
-  time: { type: Date, default: Date.now },
+name: String,
+text: String,
+room: String,
+time: { type: Date, default: Date.now }
 });
 
 const Message = mongoose.model("Message", messageSchema);
 
-/* ---------- Users ---------- */
 let users = [];
 
-/* ---------- Socket Connection ---------- */
+/* -------------------------
+Socket Connection
+--------------------------*/
 io.on("connection", (socket) => {
+console.log("User connected");
 
-  /* Join Room */
-  socket.on("joinRoom", async ({ name, room }) => {
+/* Join room */
+socket.on("joinRoom", async ({ name, room }) => {
+socket.username = name;
+socket.room = room;
 
-    socket.username = name;
-    socket.room = room;
+```
+socket.join(room);
 
-    socket.join(room);
+users.push({
+  id: socket.id,
+  name,
+  room
+});
 
-    users.push({
-      id: socket.id,
-      name,
-      room
-    });
+/* Send old messages */
+const oldMessages = await Message.find({ room });
 
-    const oldMessages = await Message.find({ room });
+oldMessages.forEach((msg) => {
+  socket.emit("message", msg);
+});
 
-    oldMessages.forEach((msg) => {
-      socket.emit("message", msg);
-    });
-
-    io.to(room).emit(
-      "roomUsers",
-      users.filter((u) => u.room === room)
-    );
-
-  });
-
-  /* Send Message */
-  socket.on("sendMessage", async ({ message }) => {
-
-    const newMsg = new Message({
-      name: socket.username,
-      text: message,
-      room: socket.room
-    });
-
-    const savedMsg = await newMsg.save();
-
-    io.to(socket.room).emit("message", savedMsg);
-
-  });
-
-  /* Delete Message */
-  socket.on("deleteMessage", async (id) => {
-
-    if (!id) return;
-
-    const msg = await Message.findById(id);
-
-    if (!msg) return;
-
-    if (msg.name !== socket.username) return;
-
-    await Message.deleteOne({ _id: id });
-
-    io.to(socket.room).emit("messageDeleted", id.toString());
-
-  });
-
-  /* Disconnect */
-  socket.on("disconnect", () => {
-
-    users = users.filter((u) => u.id !== socket.id);
-
-  });
+/* Send room users */
+io.to(room).emit(
+  "roomUsers",
+  users.filter((u) => u.room === room)
+);
+```
 
 });
 
-/* ---------- Server ---------- */
-const PORT = process.env.PORT || 5000;
+/* Send message */
+socket.on("sendMessage", async ({ message }) => {
+const newMsg = new Message({
+name: socket.username,
+text: message,
+room: socket.room
+});
+
+```
+const savedMsg = await newMsg.save();
+
+io.to(socket.room).emit("message", savedMsg);
+```
+
+});
+
+/* Delete message */
+socket.on("deleteMessage", async (id) => {
+if (!id) return;
+
+```
+const msg = await Message.findById(id);
+if (!msg) return;
+
+if (msg.name !== socket.username) return;
+
+await Message.deleteOne({ _id: id });
+
+io.to(socket.room).emit("messageDeleted", id.toString());
+```
+
+});
+
+/* Disconnect */
+socket.on("disconnect", () => {
+users = users.filter((u) => u.id !== socket.id);
+});
+});
+
+/* -------------------------
+Serve Frontend
+--------------------------*/
+app.use(express.static(path.join(__dirname, "../client")));
+
+app.get("/", (req, res) => {
+res.sendFile(path.join(__dirname, "../client/index.html"));
+});
+
+/* -------------------------
+Start Server
+--------------------------*/
+const PORT = process.env.PORT || 10000;
 
 server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+console.log(`Server running on port ${PORT}`);
 });
